@@ -47,6 +47,26 @@ Este é um exemplo de aplicativo Express.js que realiza consultas em um banco de
   - maximoPainelPorMicroInversor: Número máximo de painéis por microinversor.
 - Resposta: JSON com a mensagem "Valores e resultados inseridos com sucesso" em caso de sucesso.
 
+## Rotas do Insomnia
+
+As rotas a seguir podem ser importadas no Insomnia para testar as funcionalidades da API.
+
+### Valores
+
+- **GET** Todos os Valores: `/api/valores`
+- **POST** Inserir Valores: `/api/valores`
+- **DELETE** Limpar Valores: `/api/valores`
+
+### Resultados
+
+- **GET** Todos os Resultados: `/api/resultados`
+- **POST** Inserir Resultados: `/api/resultados`
+- **DELETE** Limpar Resultados: `/api/resultados`
+
+### Todos Valores e Resultados
+
+- **GET** Todos Valores e Resultados: `/api/todosValores`
+
 ## Contribuição
 
 Contribuições são bem-vindas! Se você tiver sugestões de melhorias, abra uma issue ou envie um pull request.

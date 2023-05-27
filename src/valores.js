@@ -3,6 +3,7 @@ const connection = require("../banco.js");
 const app = express();
 app.use(express.json());
 
+// Consulta todos os valores
 app.get("/api/valores", (req, res) => {
   connection.query("SELECT * FROM valores", (err, results) => {
     if (err) {
@@ -13,6 +14,8 @@ app.get("/api/valores", (req, res) => {
     res.json(results);
   });
 });
+
+// Consulta todos os resultados
 app.get("/api/resultados", (req, res) => {
   connection.query("SELECT * FROM resultados", (err, results) => {
     if (err) {
@@ -23,12 +26,14 @@ app.get("/api/resultados", (req, res) => {
     res.json(results);
   });
 });
+
+// Consulta todos os valores e resultados com base na relação entre as tabelas
 app.get("/api/todosValores", (req, res) => {
   const query = `
-      SELECT *
-      FROM valores v
-      JOIN resultados r ON v.id = r.id
-    `;
+  SELECT valores.*, resultados.*
+  FROM valores
+  JOIN resultados ON valores.id = resultados.id_valores
+`;
 
   connection.query(query, (err, results) => {
     if (err) {
@@ -37,29 +42,31 @@ app.get("/api/todosValores", (req, res) => {
       return;
     }
 
-    const values = results.map((row) => ({
-      id: row.id,
-      potenciaTotalParametroKw: row.potenciaTotalParametroKw,
-      potenciaTotalPainel: row.potenciaTotalPainel,
-      alturaPainel: row.alturaPainel,
-      larguraPainel: row.larguraPainel,
-      maximoPainelPorMicroInversor: row.maximoPainelPorMicroInversor,
+    const data = results.map((row) => ({
+      valores: {
+        id: row.id,
+        potenciaTotalParametroKw: row.potenciaTotalParametroKw,
+        potenciaTotalPainel: row.potenciaTotalPainel,
+        alturaPainel: row.alturaPainel,
+        larguraPainel: row.larguraPainel,
+        maximoPainelPorMicroInversor: row.maximoPainelPorMicroInversor,
+      },
+      resultados: {
+        id: row.id_resultados,
+        quantidadeDePaineis: row.quantidadeDePaineis,
+        quantidadeMicroInversores: row.quantidadeMicroInversores,
+        quantidadeColunas: row.quantidadeColunas,
+        comprimentoDaEstrutura: row.comprimentoDaEstrutura,
+        alturaDaEstrutura: row.alturaDaEstrutura,
+        areaUtil: row.areaUtil,
+      },
     }));
 
-    const calculations = results.map((row) => ({
-      id: row.id,
-      quantidadeDePaineis: row.quantidadeDePaineis,
-      quantidadeMicroInversores: row.quantidadeMicroInversores,
-      quantidadeColunas: row.quantidadeColunas,
-      comprimentoDaEstrutura: row.comprimentoDaEstrutura,
-      alturaDaEstrutura: row.alturaDaEstrutura,
-      areaUtil: row.areaUtil,
-    }));
-
-    res.json({ values, calculations });
+    res.json(data);
   });
 });
 
+// Inserção de valores e cálculo dos resultados
 app.post("/api/valores", (req, res) => {
   const {
     potenciaTotalParametroKw,
@@ -87,22 +94,27 @@ app.post("/api/valores", (req, res) => {
         return;
       }
 
+      const id_valores = result.insertId;
+
       // Calcular os valores adicionais
-      const quantidadeDePaineis =
-        (potenciaTotalParametroKw * 1000) / potenciaTotalPainel;
-      const quantidadeMicroInversores =
-        quantidadeDePaineis / maximoPainelPorMicroInversor;
-      const quantidadeColunas = quantidadeDePaineis / 2;
+      const quantidadeDePaineis = Math.ceil(
+        (potenciaTotalParametroKw * 1000) / potenciaTotalPainel
+      );
+      const quantidadeMicroInversores = Math.ceil(
+        quantidadeDePaineis / maximoPainelPorMicroInversor
+      );
+      const quantidadeColunas = Math.ceil(quantidadeDePaineis / 2);
       const comprimentoDaEstrutura = quantidadeColunas * larguraPainel;
       const alturaDaEstrutura = 2 * comprimentoDaEstrutura;
       const areaUtil = comprimentoDaEstrutura * alturaDaEstrutura;
 
       // Inserir os valores calculados na tabela "resultados"
       const resultadosQuery =
-        "INSERT INTO resultados (quantidadeDePaineis, quantidadeMicroInversores, quantidadeColunas, comprimentoDaEstrutura, alturaDaEstrutura, areaUtil) VALUES (?, ?, ?, ?, ?, ?)";
+        "INSERT INTO resultados (id_valores, quantidadeDePaineis, quantidadeMicroInversores, quantidadeColunas, comprimentoDaEstrutura, alturaDaEstrutura, areaUtil) VALUES (?, ?, ?, ?, ?, ?, ?)";
       connection.query(
         resultadosQuery,
         [
+          id_valores,
           quantidadeDePaineis,
           quantidadeMicroInversores,
           quantidadeColunas,
@@ -123,6 +135,33 @@ app.post("/api/valores", (req, res) => {
       );
     }
   );
+});
+// Limpar todos os registros da tabela "valores"
+app.delete("/api/valores", (req, res) => {
+  connection.query("DELETE FROM valores", (err, result) => {
+    if (err) {
+      console.error("Erro ao excluir registros da tabela 'valores':", err);
+      res.status(500).json({ error: "Erro ao excluir registros" });
+      return;
+    }
+    res.json({
+      message: "Registros da tabela 'valores' excluídos com sucesso",
+    });
+  });
+});
+
+// Limpar todos os registros da tabela "resultados"
+app.delete("/api/resultados", (req, res) => {
+  connection.query("DELETE FROM resultados", (err, result) => {
+    if (err) {
+      console.error("Erro ao excluir registros da tabela 'resultados':", err);
+      res.status(500).json({ error: "Erro ao excluir registros" });
+      return;
+    }
+    res.json({
+      message: "Registros da tabela 'resultados' excluídos com sucesso",
+    });
+  });
 });
 
 app.listen(3000, () => {
